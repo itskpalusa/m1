@@ -1,81 +1,226 @@
-<!DOCTYPE html>
+<?php
+/**
+ * Fuel is a fast, lightweight, community driven PHP 5.4+ framework.
+ *
+ * @package    Fuel
+ * @version    1.8.2
+ * @author     Fuel Development Team
+ * @license    MIT License
+ * @copyright  2010 - 2019 Fuel Development Team
+ * @link       https://fuelphp.com
+ */
 
-<!-- You must have a homepage with a modern design that includes
-basic welcome information and contains useful links to get to
-the other pages on the site. -->
+/**
+ * -----------------------------------------------------------------------------
+ *  Configure PHP Settings
+ * -----------------------------------------------------------------------------
+ */
 
-<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+/**
+ * -----------------------------------------------------------------------------
+ *  Show error reporting
+ * -----------------------------------------------------------------------------
+ *
+ *  Set error reporting and display errors settings.
+ *  You will want to change these when in production.
+ *
+ */
 
-<head>
-    <meta charset="utf-8" />
-    <link rel="stylesheet" href="../assets/style.css">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/css/bootstrap.min.css" rel="stylesheet"
-        integrity="sha384-eOJMYsd53ii+scO/bJGFsiCZc+5NDVN2yr8+0RDqr0Ql0h+rP48ckxlpbzKgwra6" crossorigin="anonymous">
+error_reporting(-1);
 
-    <title>GoreTex - Home</title>
-</head>
+ini_set('display_errors', 1);
 
-<body>
+/**
+ * -----------------------------------------------------------------------------
+ *  Define constants
+ * -----------------------------------------------------------------------------
+ */
 
-    <nav class="navbar navbar-expand-lg navbar-light bg-light">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="#">Goretex Professionals LLC</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
-                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav">
-                    <li class="nav-item">
-                        <a class="nav-link active" href="index.php">Home</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="about.php">About</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="color-generator.php">Color Generator</a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
+/**
+ * -----------------------------------------------------------------------------
+ *  Website document root
+ * -----------------------------------------------------------------------------
+ */
 
-    <header>
-        <h1 class='text-center'>Goretex Professionals LLC
-            <img src='https://i.pinimg.com/originals/ca/57/5b/ca575bc595713822b92880db4219881a.png' alt='logo'
-                width='32'>
-        </h1>
-    </header>
+define('DOCROOT', __DIR__.DIRECTORY_SEPARATOR);
 
-    <div class="container" id="content">
+/**
+ * -----------------------------------------------------------------------------
+ *  Path to the application directory
+ * -----------------------------------------------------------------------------
+ */
 
-        <div class="text-center" id=welcome>
-            <h1>Outstanding Designers & Website Developers</h1>
-            <p>Our team has been crafting beautiful websites since 2021. We create sites that are lightning fast and
-                tailored to your needs.</p>
-        </div>
+define('APPPATH', realpath(__DIR__.'/../../fuel/app/').DIRECTORY_SEPARATOR);
 
-        <div class="text-center" id=contact>
-            <!-- the email doesn't get sent anywhere -->
-            <form action="index.php" method="post">
-                <label for="email">
-                    <p>Contact us for a free consultation!</p>
-                </label>
-                <br /> <input type="email" id="email" name="email" placeholder="Enter your email">
-                <input type="submit" value="submit">
-            </form>
-        </div>
-        <?php
-    if (isset($_POST['email'])) {
-      echo "Thank you! You'll hear form us shortly.";
-    }
-    ?>
-    </div>
-    <footer class="footer mt-auto py-3 bg-light">
-        <div class="container">
-            <span class="text-center">Copyright "GoreTex Professionals LLC" 2021</span>
-        </div>
-    </footer>
-</body>
+/**
+ * -----------------------------------------------------------------------------
+ *  Path to the default packages directory
+ * -----------------------------------------------------------------------------
+ */
 
-</html>
+define('PKGPATH', realpath(__DIR__.'/../../fuel/packages/').DIRECTORY_SEPARATOR);
+
+/**
+ * -----------------------------------------------------------------------------
+ *  The path to the framework core
+ * -----------------------------------------------------------------------------
+ */
+
+define('COREPATH', realpath(__DIR__.'/../../fuel/core/').DIRECTORY_SEPARATOR);
+
+/**
+ * -----------------------------------------------------------------------------
+ *  Profiling
+ * -----------------------------------------------------------------------------
+ */
+
+defined('FUEL_START_TIME') or define('FUEL_START_TIME', microtime(true));
+defined('FUEL_START_MEM') or define('FUEL_START_MEM', memory_get_usage());
+
+/**
+ * -----------------------------------------------------------------------------
+ *  Preparing the Application
+ * -----------------------------------------------------------------------------
+ */
+
+/**
+ * -----------------------------------------------------------------------------
+ *  Check for dependencies
+ * -----------------------------------------------------------------------------
+ */
+
+if ( ! file_exists(COREPATH.'classes'.DIRECTORY_SEPARATOR.'autoloader.php'))
+{
+	die('No composer autoloader found. Please run composer to install the FuelPHP framework dependencies first!');
+}
+
+/**
+ * -----------------------------------------------------------------------------
+ *  Activate autoloader class
+ * -----------------------------------------------------------------------------
+ */
+
+require COREPATH.'classes'.DIRECTORY_SEPARATOR.'autoloader.php';
+
+class_alias('Fuel\\Core\\Autoloader', 'Autoloader');
+
+/**
+ * -----------------------------------------------------------------------------
+ *  Route processing
+ * -----------------------------------------------------------------------------
+ *
+ *  Exception route processing closure
+ *
+ */
+
+$routerequest = function($request = null, $e = false)
+{
+	Request::reset_request(true);
+
+	$route = array_key_exists($request, Router::$routes) ? Router::$routes[$request]->translation : Config::get('routes.'.$request);
+
+	if ($route instanceof Closure)
+	{
+		$response = $route();
+
+		if( ! $response instanceof Response)
+		{
+			$response = Response::forge($response);
+		}
+	}
+	elseif ($e === false)
+	{
+		$response = Request::forge()->execute()->response();
+	}
+	elseif ($route)
+	{
+		$response = Request::forge($route, false)->execute(array($e))->response();
+	}
+	elseif ($request)
+	{
+		$response = Request::forge($request)->execute(array($e))->response();
+	}
+	else
+	{
+		throw $e;
+	}
+
+	return $response;
+};
+
+/**
+ * -----------------------------------------------------------------------------
+ *  Starting the Application
+ * -----------------------------------------------------------------------------
+ */
+
+/**
+ * -----------------------------------------------------------------------------
+ *  Start the engine
+ * -----------------------------------------------------------------------------
+ *
+ *  Generate the request, execute it and send the output
+ *
+ */
+
+try
+{
+	// Boot the app...
+	require APPPATH.'bootstrap.php';
+
+	// ... and execute the main request
+	$response = $routerequest();
+}
+catch (HttpBadRequestException $e)
+{
+	$response = $routerequest('_400_', $e);
+}
+catch (HttpNoAccessException $e)
+{
+	$response = $routerequest('_403_', $e);
+}
+catch (HttpNotFoundException $e)
+{
+	$response = $routerequest('_404_', $e);
+}
+catch (HttpServerErrorException $e)
+{
+	$response = $routerequest('_500_', $e);
+}
+
+$response->body((string) $response);
+
+/**
+ * -----------------------------------------------------------------------------
+ *  Start profiling
+ * -----------------------------------------------------------------------------
+ *
+ *  This will add the execution time and memory usage to the output.
+ *
+ *  Comment these out if you don't use it.
+ *
+ */
+
+if (strpos($response->body(), '{exec_time}') !== false or strpos($response->body(), '{mem_usage}') !== false)
+{
+	$bm = Profiler::app_total();
+
+	$response->body(
+		str_replace(
+			array('{exec_time}', '{mem_usage}'),
+			array(round($bm[0], 4), round($bm[1] / pow(1024, 2), 3)),
+			$response->body()
+		)
+	);
+}
+
+/**
+ * -----------------------------------------------------------------------------
+ *  Show the web page
+ * -----------------------------------------------------------------------------
+ *
+ *  Send the output to the client
+ *
+ */
+
+$response->send(true);
